@@ -2,7 +2,6 @@
 Main pipeline for CGM meal detection project.
 """
 
-
 import pandas as pd
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -32,7 +31,8 @@ if __name__ == "__main__":
     #plot_meal_counts(summary_df)
 
     # Step 4 — Preprocessing
-    df = data["596-ws-training_processed"]
+    patient_key = "588-ws-training_processed" # <----- change patient name here
+    df = data[patient_key]
     time_col = "5minute_intervals_timestamp"
 
     # Run preprocessing
@@ -64,12 +64,10 @@ if __name__ == "__main__":
     # Visualize windows (optional for visualizing)
     # visualize_windows(segments, window_minutes=120, stride_minutes=45, max_windows=10)
 
-
-
     # Step 6 Run LSTM grid search
     # Prepare input dictionary for model
     model_input_data = {
-        "596-ws-training_processed": {"X": X, "y": y, "meta": meta}
+        patient_key: {"X": X, "y": y, "meta": meta}
     }
     #run
     run_personalized_lstm_search(model_input_data)
