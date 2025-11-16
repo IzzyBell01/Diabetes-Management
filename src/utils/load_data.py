@@ -8,7 +8,7 @@ def load_patient_data(base_dir="../data/Ohio Data"):
     Ohio2018/train, Ohio2018/test, Ohio2020/train, Ohio2020/test
     Returns dict {dataset_patient_split: DataFrame}
     """
-    datasets = ["Ohio2018", "Ohio2020"]
+    datasets = ["Ohio2018_processed", "Ohio2020_processed"]
     splits = ["train", "test"]
     patient_data = {}
 

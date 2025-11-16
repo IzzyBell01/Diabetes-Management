@@ -22,13 +22,54 @@ def run_single_patient_pipeline(data, patient_key):
 # ---------- PIPELINE 2: Loop over all patients (individual training) ----------
 def run_all_patients_individual(data):
     print("\n=== Running pipeline for ALL patients (individual models) ===")
+
+    model_input_data = {}
+
     for patient_key in data.keys():
-        if "training" not in patient_key:
+        if "training" not in patient_key.lower():
             continue  # skip test sets
+
         try:
-            run_single_patient_pipeline(data, patient_key)
+            print(f"\n=== Preprocessing {patient_key} ===")
+            df = data[patient_key]
+
+            # --- Preprocessing ---
+            segments, summary = preprocess_patient(
+                df,
+                time_col="5minute_intervals_timestamp",
+                cbg_col="cbg",
+                normalize=True,
+                long_gap_thresh=120
+            )
+
+            # --- Windowing ---
+            X, y, meta = window_size(
+                segments,
+                window_minutes=120,
+                stride_minutes=45,
+                sample_every=5
+            )
+
+            # store for later
+            model_input_data[patient_key] = {"X": X, "y": y, "meta": meta}
+
+            # --- Train personalized LSTM ---
+            run_personalized_lstm_search({patient_key: model_input_data[patient_key]})
+
         except Exception as e:
             print(f"⚠️ Skipping {patient_key} due to error: {e}")
+
+    # ===== After training all patients: Label summary =====
+    if model_input_data:
+        from utils.summary import build_label_summary, plot_label_counts
+
+        label_summary = build_label_summary(model_input_data)
+        label_summary.to_csv("results/lstm_gridsearch/label_summary.csv", index=False)
+
+        print("\nSaved label summary table!")
+        print(label_summary)
+
+        plot_label_counts(label_summary)
 
 
 # ---------- PIPELINE 3: Generalized model ----------
@@ -50,20 +91,83 @@ def run_generalized_model(data):
     run_personalized_lstm_search(model_input_data)
 
 
-# ---------- MAIN ----------
+
+# Count how many 0 and 1 per patient
+from utils.summary import build_label_summary, plot_label_counts  # add near top of file
+
+
+def run_label_distribution_overview(data):
+    """
+    Preprocess + window ALL training patients,
+    then build + plot label summary (0 vs 1) WITHOUT training any models.
+    """
+    print("\n=== Collecting label distributions for ALL training patients (no training) ===")
+
+    model_input_data = {}
+
+    for patient_key, df in data.items():
+        if "training" not in patient_key.lower():
+            continue  # skip test sets
+
+        try:
+            print(f"\n=== Preprocessing {patient_key} ===")
+
+            # --- Preprocessing ---
+            segments, summary = preprocess_patient(
+                df,
+                time_col="5minute_intervals_timestamp",
+                cbg_col="cbg",
+                normalize=True,
+                long_gap_thresh=120
+            )
+
+            # --- Windowing ---
+            X, y, meta = window_size(
+                segments,
+                window_minutes=120,
+                stride_minutes=45,
+                sample_every=5
+            )
+
+            model_input_data[patient_key] = {"X": X, "y": y, "meta": meta}
+
+        except Exception as e:
+            print(f"⚠️ Skipping {patient_key} due to error: {e}")
+
+    if not model_input_data:
+        print("⚠️ No patients were processed, cannot build label summary.")
+        return
+
+    # ===== Build table + plot =====
+    label_summary = build_label_summary(model_input_data)
+    label_summary.to_csv("results/lstm_gridsearch/label_summary_only.csv", index=False)
+
+    print("\nLabel summary (per patient):")
+    print(label_summary)
+
+    plot_label_counts(label_summary)
+
+
+
+
+
+#MAIN
 if __name__ == "__main__":
-    base_dir = "/Users/isabellemueller/BME unibern/Diabetes Management/Ohio Data"
+    base_dir = r"C:\Users\carla\Documents\Master\Third Semester\Diabetes\Ohio Data\Ohio Data"
     data = load_patient_data(base_dir)
     summary_df = build_summary(data)
 
     # Choose which pipeline to run:
-    mode = "all"  # options: "single", "all", "generalized"
+    mode = "all"  # options: "single", "all", "generalized", "labels_only"
 
     if mode == "single":
-        run_single_patient_pipeline(data, "588-ws-training_processed") #<--- select patient
+        run_single_patient_pipeline(data, "588-ws-training_processed")  # <--- select patient
 
     elif mode == "all":
         run_all_patients_individual(data)
 
     elif mode == "generalized":
         run_generalized_model(data)
+
+    elif mode == "labels_only":
+        run_label_distribution_overview(data)

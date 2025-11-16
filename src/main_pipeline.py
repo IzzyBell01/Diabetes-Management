@@ -20,7 +20,7 @@ from models.lstm_gridsearch import run_personalized_lstm_search
 
 if __name__ == "__main__":
     # Step 1 — Load data
-    base_dir = "/Users/isabellemueller/BME unibern/Diabetes Management/Ohio Data"
+    base_dir = "/Users/carla/Documents/Master/Third Semester/Diabetes/Ohio Data/Ohio Data"
     data = load_patient_data(base_dir)
 
    # Step 2 — Summarize
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     '''
     # For looping through all patients, apply this:
-    # Step 4 — Preprocess all patients
+    Step 4 — Preprocess all patients
     for key, df in patient_data.items():
         print(f"\n=== Processing {key} ===")
         segments, summary = preprocess_patient(df)
